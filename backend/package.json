@@ -1,0 +1,13 @@
+{
+  "name": "duespay-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DuesPay backend: talks to Paga Collect and writes payment status to Firestore.",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  }
+}

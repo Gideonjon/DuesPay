@@ -1,6 +1,6 @@
 {
-    "name": "duespay",
-    "short_name": "duespay",
+    "name": "DuesPay",
+    "short_name": "DuesPay",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
