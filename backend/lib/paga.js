@@ -10,7 +10,7 @@ const crypto = require('crypto');
 // Fee share configuration and validation
 // --------------------------------------------------
 
-const payerFeeShare = Number(process.env.PAYER_FEE_SHARE ?? 0.99);
+const payerFeeShare = Number(process.env.PAYER_FEE_SHARE ?? 1);
 const payeeFeeShare = Number(process.env.PAYEE_FEE_SHARE ?? 0);
 
 if (
@@ -18,10 +18,10 @@ if (
   !Number.isFinite(payeeFeeShare) ||
   payerFeeShare < 0 ||
   payeeFeeShare < 0 ||
-  payerFeeShare + payeeFeeShare >= 1
+  Math.abs(payerFeeShare + payeeFeeShare - 1) > 0.000001
 ) {
   throw new Error(
-    'Paga fee shares must be non-negative and total less than 1.0.'
+    'Paga fee shares must add up to exactly 1.0.'
   );
 }
 
@@ -41,23 +41,14 @@ function sha512(text) {
 
 function paymentRequestHash(body, hashKey) {
   const payer = body.payer || {};
-  const payee = body.payee || {};
 
-  const parts = [
+  const joined = [
     body.referenceNumber,
     body.amount,
     body.currency,
     payer.phoneNumber,
-    payer.email,
-    payee.accountNumber,
-    payee.phoneNumber,
-    payee.bankId,
-    payee.bankAccountNumber,
-  ];
-
-  const joined = parts
-    .filter((p) => p !== undefined && p !== null && p !== '')
-    .join('');
+    payer.email || '',
+  ].join('');
 
   return sha512(joined + hashKey);
 }
@@ -267,13 +258,28 @@ async function createPaymentRequest({
     );
   }
 
-  if (!res.ok || String(data.statusCode) !== '0') {
-    throw new Error(
-      `Paga rejected the request (HTTP ${res.status}): ${
-        data.statusMessage || responseText.slice(0, 200)
-      }`
-    );
-  }
+ if (!res.ok || String(data.statusCode) !== '0') {
+  console.error('[PAGA PAYMENT REQUEST FAILED]', {
+    endpoint: cfg.baseUrl,
+    httpStatus: res.status,
+    statusCode: data.statusCode,
+    statusMessage: data.statusMessage,
+    response: data,
+    referenceNumber: body.referenceNumber,
+    amount: body.amount,
+    currency: body.currency,
+    paymentMethods: body.paymentMethods,
+    payerCollectionFeeShare: body.payerCollectionFeeShare,
+    payeeCollectionFeeShare: body.payeeCollectionFeeShare,
+    expiryDateTimeUTC: body.expiryDateTimeUTC,
+  });
+
+  throw new Error(
+    `Paga rejected the request (HTTP ${res.status}, code ${data.statusCode}): ${
+      data.statusMessage || responseText.slice(0, 200)
+    }`
+  );
+}
 
   const transfer = extractBankTransfer(data);
 
