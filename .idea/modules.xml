@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/duespay.iml" filepath="$PROJECT_DIR$/duespay.iml" />
+      <module fileurl="file://$PROJECT_DIR$/android/duespay_android.iml" filepath="$PROJECT_DIR$/android/duespay_android.iml" />
+    </modules>
+  </component>
+</project>

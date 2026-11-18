@@ -1,1 +1,16 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"useduespay","appId":"1:923181965278:android:68e52b7a21743cc326c74f","fileOutput":"android/app/google-services.json"}},"ios":{"default":{"projectId":"useduespay","appId":"1:923181965278:ios:39bb772d23a0a6fc26c74f","uploadDebugSymbols":false,"fileOutput":"ios/Runner/GoogleService-Info.plist"}},"macos":{"default":{"projectId":"useduespay","appId":"1:923181965278:ios:39bb772d23a0a6fc26c74f","uploadDebugSymbols":false,"fileOutput":"macos/Runner/GoogleService-Info.plist"}},"dart":{"lib/firebase_options.dart":{"projectId":"useduespay","configurations":{"android":"1:923181965278:android:68e52b7a21743cc326c74f","ios":"1:923181965278:ios:39bb772d23a0a6fc26c74f","macos":"1:923181965278:ios:39bb772d23a0a6fc26c74f","web":"1:923181965278:web:2e229ae8e5365cdc26c74f","windows":"1:923181965278:web:c0d3474d21693d6226c74f"}}}}}}
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "hosting": {
+    "public": "app/build/web",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [{ "source": "**", "destination": "/index.html" }],
+    "headers": [
+      {
+        "source": "**/*.@(js|wasm|json)",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+      }
+    ]
+  }
+}
