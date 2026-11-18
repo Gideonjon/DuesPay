@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "923181965278",
+    "project_id": "useduespay",
+    "storage_bucket": "useduespay.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:923181965278:android:68e52b7a21743cc326c74f",
+        "android_client_info": {
+          "package_name": "com.example.duespay"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBN4g5X5qsHbrKUr0_Qm2sM2gav7erFxWA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
