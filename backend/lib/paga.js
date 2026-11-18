@@ -1,6 +1,20 @@
 // Paga Collect API helpers.
 // Docs: https://developer-docs.paga.com/docs/operations-1
 const crypto = require('crypto');
+const payerFeeShare = Number(process.env.PAYER_FEE_SHARE ?? 0.99);
+const payeeFeeShare = Number(process.env.PAYEE_FEE_SHARE ?? 0);
+
+if (
+  !Number.isFinite(payerFeeShare) ||
+  !Number.isFinite(payeeFeeShare) ||
+  payerFeeShare < 0 ||
+  payeeFeeShare < 0 ||
+  payerFeeShare + payeeFeeShare >= 1
+) {
+  throw new Error(
+    'Paga fee shares must be non-negative and total less than 1.0.'
+  );
+}
 
 function sha512(text) {
   return crypto.createHash('sha512').update(text, 'utf8').digest('hex');
@@ -80,8 +94,8 @@ async function createPaymentRequest({ referenceNumber, amount, payerName, payerP
     payee: { name: payeeName },
     expiryDateTimeUTC: expiry.toISOString().slice(0, 19),
     isSuppressMessages: true,
-    payerCollectionFeeShare: Number(process.env.PAYER_FEE_SHARE ?? 1.0),
-    payeeCollectionFeeShare: Number(process.env.PAYEE_FEE_SHARE ?? 0.0),
+    payerCollectionFeeShare: payerFeeShare,
+payeeCollectionFeeShare: payeeFeeShare,
     isAllowPartialPayments: false,
     isAllowOverPayments: false,
     callBackUrl,

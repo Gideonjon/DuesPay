@@ -23,15 +23,17 @@ module.exports = async (req, res) => {
   const event = String(payload.event || '').toUpperCase();
   const state = String(payload.state || '').toUpperCase();
 
+  const outstandingBalance = payload.outstandingBalance;
+
+  const fullyPaid =
+    event === 'PAYMENT_COMPLETE' &&
+    String(payload.statusCode) === '0' &&
+    state === 'CONSUMED' &&
+    (outstandingBalance == null || Number(outstandingBalance) === 0);
+
   try {
-    if (event === 'PAYMENT_COMPLETE' && String(payload.statusCode) === '0') {
-      const funding = payload.fundingDetails || {};
-      const result = await markPaid(reference, {
-        pagaNotificationId: payload.notificationId || null,
-        paidAmount: Number(payload.paymentAmount ?? 0),
-        payerBankName: funding.payerBankName || null,
-        senderName: funding.payerName || null,
-      });
+    if (fullyPaid) {
+      const result = await markPaid(reference);
       console.log(`Callback ${reference}: ${result}`);
     } else if (event.includes('EXPIRE') || state.includes('EXPIRE')) {
       const result = await markExpired(reference);
