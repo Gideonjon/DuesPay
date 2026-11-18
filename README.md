@@ -1,160 +1,405 @@
 # DuesPay
 
-Collect departmental and association dues by bank transfer, with a live dashboard for the treasurer. Built on the Paga Collect API.
+**Simplifying departmental and association dues collection through bank transfers.**
 
-## How it works
+DuesPay is a digital dues collection platform that helps student associations, departments, and organizations collect payments without manually tracking bank transfers. Built with Flutter, Firebase, Vercel, and the Paga Collect API, it provides unique payment codes, dedicated virtual accounts, and real-time collection tracking.
 
-1. A treasurer signs in and creates a due (title + amount). The app gives it a 6-character code.
-2. A student enters the code, their name, matric number and phone.
-3. The backend asks Paga for a one-time bank account number for that student and amount.
-4. The student transfers from any bank app.
-5. Paga calls the backend's webhook. The backend verifies the hash, marks the payment paid, and the treasurer's dashboard and the student's screen update instantly.
+## How It Works
 
+1. **Create a due:** A treasurer signs in, creates a collection with a title and amount, and receives a unique six-character payment code.
+2. **Student registration:** A student enters the payment code alongside their name, matriculation number, and phone number.
+3. **Generate a payment account:** The backend requests a one-time virtual account from Paga for the student and specified amount.
+4. **Make payment:** The student transfers the required amount using any supported banking application.
+5. **Payment confirmation:** Paga sends a callback to the backend. The backend validates the callback hash, processes the payment, and updates the payment record.
+6. **Real-time tracking:** Firestore synchronizes the payment status across the student's payment screen and the treasurer's dashboard.
+
+## System Architecture
+
+```text
+              Flutter Application
+                 (Android/iOS/Web)
+                        |
+                        ▼
+                 Vercel Backend
+                   Node.js API
+                        |
+             ┌──────────┴──────────┐
+             ▼                     ▼
+        Paga Collect           Firebase
+        Payment API          Authentication
+             ▲                 Firestore
+             │                     ▲
+             │                     │
+        Paga Webhook ──────────────┘
+        (/api/paga-webhook)
 ```
-Flutter app ──► Vercel backend ──► Paga Collect (/paymentRequest)
-     ▲               │   ▲
-     │               ▼   └── Paga callback (/api/paga-webhook)
-     └────────── Firestore (live updates)
+
+### Technology Stack
+
+| Component | Technology |
+|---|---|
+| Mobile and web frontend | Flutter / Dart |
+| Authentication | Firebase Authentication |
+| Database | Cloud Firestore |
+| Backend | Node.js / Vercel Functions |
+| Payment processing | Paga Collect API |
+| Web hosting | Firebase Hosting |
+| Backend hosting | Vercel |
+
+## Why Vercel Instead of Firebase Cloud Functions?
+
+DuesPay uses Firebase's free Spark plan for authentication and Firestore.
+
+Deploying Firebase Cloud Functions requires upgrading to the Blaze plan, which requires a billing account.
+
+To avoid this requirement, DuesPay uses Vercel's free tier to host its backend API endpoints.
+
+This architecture separates frontend services from payment processing:
+
+- Firebase handles authentication and real-time database updates.
+- Vercel handles backend requests and payment callbacks.
+- Paga handles virtual account generation and bank transfer processing.
+- Secret API credentials remain on the backend and are never embedded in the Flutter application.
+
+## Project Structure
+
+```text
+duespay/
+│
+├── backend/
+│   ├── api/
+│   │   ├── create-payment.js
+│   │   └── paga-webhook.js
+│   │
+│   ├── lib/
+│   │   ├── firebase.js
+│   │   └── paga.js
+│   │
+│   ├── test/
+│   └── package.json
+│
+├── lib/
+│   ├── screens/
+│   │   ├── pay.dart
+│   │   └── treasurer.dart
+│   └── main.dart
+│
+├── android/
+├── ios/
+├── web/
+├── macos/
+├── linux/
+├── windows/
+│
+├── firestore.rules
+├── firestore.indexes.json
+├── firebase.json
+├── setup.sh
+├── pubspec.yaml
+└── README.md
 ```
 
-## Why the backend is on Vercel, not Firebase
+The Flutter application lives in the root `lib/` directory. The backend is maintained separately in `backend/`.
 
-Deploying Cloud Functions needs Firebase's Blaze plan, which requires a billing card. To stay on the free Spark plan, this project uses Firebase only for Auth and Firestore, and puts the two secret-holding endpoints on Vercel's free tier. Paga keys never ship inside the app.
+## Getting Started
 
-## Folders
+### Prerequisites
 
-- `backend/` Node functions for Vercel: `api/create-payment.js`, `api/paga-webhook.js`, helpers in `lib/`
-- `lib/` Flutter app for Android, iOS and web (`lib/` source, `setup.sh` adds the platform folders)
-- `firestore.rules` Firestore security rules
-- `firebase.json` Firebase Hosting (web app) and rules deploy config
+- Flutter SDK
+- Dart SDK
+- Node.js and npm
+- Firebase account
+- Vercel account
+- Paga Business account with Collect API access
 
-## Setup
+### 1. Configure Paga
 
-### 1. Paga (do this first, it can take the longest)
+Paga integration is required for generating virtual collection accounts and receiving payment notifications.
 
-1. Create a Paga Business account and open the sandbox portal: https://beta-business.paga.com
-2. Copy your public key, secret key and hash (HMAC) key from the API keys page.
-3. Ask Paga's team at the hackathon to confirm your sandbox account can use the Collect API.
+1. Create a Paga Business account.
+2. Access the Paga sandbox portal: https://beta-business.paga.com
+3. Obtain your API public key, secret key, and HMAC hash key.
+4. Contact Paga's technical team to confirm that your sandbox account has access to the Collect API.
 
-### 2. Firebase (free Spark plan)
+Keep all credentials private. They must only be configured on the backend.
 
-1. Create a project at https://console.firebase.google.com
-2. Authentication → Sign-in method → enable Email/Password.
-3. Firestore Database → Create database (production mode).
-4. Firestore → Rules → paste `firestore.rules` → Publish.
-5. Project settings → Service accounts → Generate new private key. Keep the file private.
+### 2. Configure Firebase
 
-### 3. Backend (Vercel free tier)
+Create a Firebase project at https://console.firebase.google.com.
 
-```bash 
+Configure the following:
+
+1. Enable Email/Password authentication.
+2. Create a Cloud Firestore database in production mode.
+3. Deploy the security rules from `firestore.rules`.
+4. Open Project Settings → Service Accounts.
+5. Generate a Firebase Admin SDK service account key.
+
+Keep the generated service account JSON private. Never commit it to Git.
+
+### 3. Deploy the Backend to Vercel
+
+Navigate to the backend directory:
+
+```bash
 cd backend
 npm install
-npm test            # checks the hash logic
-npx vercel          # first deploy; note the URL it prints
+npm test
+npx vercel
 ```
 
-In the Vercel dashboard, add the variables from `.env.example` (Settings → Environment Variables), then run `npx vercel --prod`.
+Follow the prompts to link your project to Vercel.
 
-For `FIREBASE_SERVICE_ACCOUNT_B64`, run `base64 -w0 serviceAccount.json` (macOS: `base64 -i serviceAccount.json`) and paste the output.
+After the initial deployment:
 
-### 4. Flutter app (Android, iOS, web)
-
-One codebase runs on all three. From the `app/` folder:
+1. Open your Vercel project dashboard.
+2. Navigate to Settings → Environment Variables.
+3. Configure the environment variables listed in `.env.example`.
+4. Deploy the production version:
 
 ```bash
-cd app
-bash setup.sh                      # adds android/, ios/, web/ and Firebase settings
+npx vercel --prod
+```
+
+For the Firebase service account, encode your JSON credentials as Base64:
+
+**macOS:**
+
+```bash
+base64 -i serviceAccount.json
+```
+
+Use the output as the value for `FIREBASE_SERVICE_ACCOUNT_B64`.
+
+Do not commit `.env` files or service account credentials.
+
+### 4. Configure the Flutter Application
+
+The Flutter application is located in the project root.
+
+From the DuesPay root directory, run:
+
+```bash
+flutter pub get
+
+bash setup.sh
+```
+
+Install FlutterFire CLI:
+
+```bash
 dart pub global activate flutterfire_cli
-flutterfire configure --platforms=android,ios,web   # creates lib/firebase_options.dart
 ```
 
-Run it:
+Configure Firebase for the supported platforms:
 
 ```bash
-B=--dart-define=BACKEND_URL=https://your-project.vercel.app
-flutter run -d chrome $B           # web
-flutter run -d android $B          # Android phone or emulator (USB debugging on)
-flutter run -d ios $B              # iPhone or simulator, macOS + Xcode only
+flutterfire configure --platforms=android,ios,web
 ```
 
-What `setup.sh` changes for each platform:
+This generates `lib/firebase_options.dart`.
 
-- **Android**: adds the INTERNET permission to the main manifest. Debug builds work without it, but a release APK would fail every network call.
-- **iOS**: sets the deployment target to iOS 15, which current Firebase SDKs need.
-- **Web**: sets the tab title and app name to DuesPay.
+### 5. Run the Application
 
-**No Mac on the team?** You can't build the iOS app, but iPhone users can open the web app in Safari and use Share → Add to Home Screen. For the demo, that covers iOS.
+Replace the backend URL with your deployed Vercel URL.
 
-### 5. Put the web app online (free, Firebase Hosting)
+**Web:**
 
 ```bash
-cd app
+flutter run -d chrome \
+  --dart-define=BACKEND_URL=https://your-project.vercel.app
+```
+
+**Android:**
+
+```bash
+flutter run -d android \
+  --dart-define=BACKEND_URL=https://your-project.vercel.app
+```
+
+**iOS:**
+
+```bash
+flutter run -d ios \
+  --dart-define=BACKEND_URL=https://your-project.vercel.app
+```
+
+For iOS development, macOS and Xcode are required.
+
+### 6. Deploy the Web Application
+
+Build the Flutter web application:
+
+```bash
 flutter build web --release \
   --dart-define=BACKEND_URL=https://your-project.vercel.app \
   --dart-define=WEB_APP_URL=https://your-project.web.app
-cd ..
+```
+
+Install Firebase CLI:
+
+```bash
 npm install -g firebase-tools
+```
+
+Authenticate and select your Firebase project:
+
+```bash
 firebase login
-firebase use --add                 # pick your Firebase project
+firebase use --add
+```
+
+Deploy the web application and Firestore rules:
+
+```bash
 firebase deploy --only hosting,firestore:rules
 ```
 
-Your app is then live at `https://<project-id>.web.app`. Point the landing page's "Get the app" button there.
+Your application will be available at:
 
-**Pay links**: with `WEB_APP_URL` set, the treasurer's "Copy pay link" button copies a link like `https://<project-id>.web.app/?code=K7M2QX`. A student taps it in the group chat and lands straight on the payment form. The web build sets this up by itself; pass the same `--dart-define` to Android and iOS builds so their links point at the web app too.
-
-### 6. Android APK for the judges
-
-```bash
-cd app
-flutter build apk --release --dart-define=BACKEND_URL=https://your-project.vercel.app \
-  --dart-define=WEB_APP_URL=https://your-project.web.app
-# file: build/app/outputs/flutter-apk/app-release.apk
+```text
+https://your-project.web.app
 ```
 
-It's signed with the debug key, which is fine for sideloading a demo but not for the Play Store.
+### Payment Links
 
-### Troubleshooting
+DuesPay supports shareable payment links.
 
-- **Android "minSdk" error**: open `android/app/build.gradle.kts` and set `minSdk = 23`.
-- **iOS "higher minimum deployment target" from CocoaPods**: rerun `bash setup.sh`, then `cd ios && pod install --repo-update`.
-- **Web sign-in fails with "unauthorized domain"**: Firebase console → Authentication → Settings → Authorized domains → add your hosting domain. `web.app` and `localhost` are already there.
+When `WEB_APP_URL` is configured, a treasurer can copy a payment link containing the due code.
 
-## Test it end to end
+Example:
 
-1. Treasurer: create an account, create a due for ₦100, copy the code.
-2. Student (second phone or after going back): enter the code and details.
-3. Pay the account number using Paga's sandbox, or simulate the callback (below).
-4. Watch both screens flip to paid.
+```text
+https://your-project.web.app/?code=K7M2QX
+```
 
-Simulate a callback while you wait for sandbox access:
+Students can open the link directly from WhatsApp, Telegram, or other messaging platforms and proceed to the payment form.
+
+Use the same `WEB_APP_URL` when building Android and iOS applications so generated payment links point to the web application.
+
+### 7. Build the Android APK
+
+Generate a release APK:
 
 ```bash
-REF=DP...            # referenceNumber from the payments collection
+flutter build apk --release \
+  --dart-define=BACKEND_URL=https://your-project.vercel.app \
+  --dart-define=WEB_APP_URL=https://your-project.web.app
+```
+
+Generated APK:
+
+```text
+build/app/outputs/flutter-apk/app-release.apk
+```
+
+The default debug signing configuration is suitable for demo sideloading but must be replaced with a proper release signing configuration before Play Store distribution.
+
+## Testing the Payment Flow
+
+You can test DuesPay using two separate sessions.
+
+**Treasurer:**
+
+1. Create an account.
+2. Sign in.
+3. Create a new due with an amount of ₦100.
+4. Copy the generated six-character payment code.
+
+**Student:**
+
+1. Open DuesPay in another browser or device.
+2. Enter the payment code.
+3. Provide your name, matriculation number, and phone number.
+4. Generate a virtual account.
+5. Transfer the required amount through the Paga sandbox.
+
+**Verification:**
+
+Once Paga confirms the transaction:
+
+- The backend processes the webhook.
+- The payment record is updated.
+- The student's payment status changes.
+- The treasurer's collection totals update through Firestore.
+
+### Simulating a Paga Webhook
+
+If sandbox payment access is unavailable, you can simulate a callback for testing.
+
+```bash
+REF=DP... 
 KEY=your_hash_key
-HASH=$(printf '%s' "n1" "0" "$REF" "CONSUMED" "0.00" "$KEY" | sha512sum | cut -d' ' -f1)
+
+HASH=$(printf '%s' "n1" "0" "$REF" "CONSUMED" "0.00" "$KEY" \
+  | shasum -a 512 | cut -d' ' -f1)
+
 curl -X POST https://your-project.vercel.app/api/paga-webhook \
   -H 'Content-Type: application/json' \
   -d "{\"event\":\"PAYMENT_COMPLETE\",\"notificationId\":\"n1\",\"statusCode\":\"0\",\"externalReferenceNumber\":\"$REF\",\"state\":\"CONSUMED\",\"outstandingBalance\":0,\"paymentAmount\":100,\"hash\":\"$HASH\"}"
 ```
 
-## Things to verify with Paga
+Use a valid payment reference from your test environment. The webhook must validate the hash and transaction details before updating Firestore.
 
-The integration follows Paga's public docs, which are inconsistent in places. Check these on your first sandbox call:
+## Paga Integration: Important Verification Points
 
-- **Request hash**: SHA-512 of `referenceNumber + amount + currency + payer.phoneNumber + payer.email + payee.* + hashKey`, blanks skipped (`lib/paga.js`).
-- **Callback hash**: SHA-512 of `notificationId + statusCode + externalReferenceNumber + state + outstandingBalance(2dp) + hashKey`. If real callbacks get a 401, compare against a logged payload.
-- **Fee shares**: Paga's sample sends payer 1.0 / payee 0.0, but the field description says the total must be under 1.0. Change `PAYER_FEE_SHARE` / `PAYEE_FEE_SHARE` if the request is rejected.
-- **Account number field**: read from `paymentMethods[].properties.AccountNumber`.
+Paga's public API documentation has some inconsistencies. Verify the following during your first sandbox transaction.
 
-## Known limits (fine for a demo, fix before real use)
+**1. Request hash**
 
-- `create-payment` has no rate limit or sign-in.
-- A student can create more than one pending payment for the same due.
-- No payout screen yet; collected money sits in the Paga business account.
+The integration currently uses SHA-512 based on:
 
-## Stretch goals
+`referenceNumber + amount + currency + payer.phoneNumber + payer.email + payee.* + hashKey`
 
-- Export paid list as CSV.
-- "Withdraw to bank" using Paga's Business API (needs a static IP whitelisted by Paga for live debits).
-- Push a notification to the treasurer's phone on every payment.
+Empty values are skipped.
+
+Implementation: `backend/lib/paga.js`.
+
+**2. Callback hash**
+
+The expected callback hash is based on:
+
+`notificationId + statusCode + externalReferenceNumber + state + outstandingBalance(2dp) + hashKey`
+
+If Paga returns HTTP 401, inspect the actual callback payload and compare the hash-generation logic against Paga's confirmed specification.
+
+**3. Fee shares**
+
+Paga's examples and field descriptions may differ regarding payer and payee fee shares.
+
+Verify the accepted values before changing `PAYER_FEE_SHARE` and `PAYEE_FEE_SHARE`.
+
+**4. Virtual account number**
+
+The generated account number is retrieved from:
+
+`paymentMethods[].properties.AccountNumber`
+
+Confirm the actual response structure against the sandbox API response.
+
+## Known Limitations
+
+The current implementation is designed for a working demonstration. The following areas require additional hardening before production deployment:
+
+- Payment creation needs authentication and rate limiting.
+- Duplicate pending payment requests should be restricted.
+- Webhook processing should be idempotent to prevent duplicate collection totals.
+- Payment amounts and references must be verified against the original transaction request.
+- Payment status changes must only be authorized through trusted backend verification.
+- A payout and settlement interface has not yet been implemented.
+- Collected funds remain in the Paga Business account until withdrawn or settled through the appropriate Paga process.
+
+## Future Improvements
+
+Potential additions to the DuesPay roadmap include:
+
+- **CSV Export:** Allow treasurers to export payment records and student lists.
+- **Automated Notifications:** Send real-time payment notifications to treasurers.
+- **Payment Analytics:** Provide collection summaries, outstanding balances, and payment statistics.
+- **Bank Withdrawals:** Integrate Paga's Business API for supported withdrawals.
+- **Multiple Collection Categories:** Support different dues, levies, departmental fees, and association contributions.
+- **Payment Reconciliation:** Provide transaction references and downloadable payment reports.
+
+## License
+
+Add your preferred open-source license before publishing the repository.
