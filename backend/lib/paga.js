@@ -232,6 +232,7 @@ async function createPaymentRequest({
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
+        'Accept-Language': 'en',
 
         Authorization:
           'Basic ' +
